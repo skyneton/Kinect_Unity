@@ -95,9 +95,9 @@ public class TrainingUI : MonoBehaviour
             float y = Distance(kneeAvg.y, hipAvg.y);
 
             float degree = Mathf.Atan2(y, distance) * Mathf.Rad2Deg;
-            str += string.Format("\n무릎-골반={0:00.00} (20 ~ 80)", degree);
+            str += string.Format("\n무릎-골반={0:00.00} (55 ~ 80)", degree);
 
-            if ((kneeAvg.y >= hipAvg.y || degree < 20f || degree > 80f) && !isWarning) {
+            if ((kneeAvg.y >= hipAvg.y || degree < 55f || degree > 80f) && !isWarning) {
                 SetSquartMode(false);
                 TextWarningMessage("자세가 잘못되었습니다.\n무릎 - 골반");
                 training.beforeSquarting = false;
