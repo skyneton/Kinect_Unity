@@ -111,7 +111,7 @@ public class CanvasViewManager : MonoBehaviour
             break;
         }
 
-        TrackingId = null;
+        if(!isBodyDraw) TrackingId = null;
         if (!isBodyDraw && boneGroupObject.gameObject.activeSelf) boneGroupObject.gameObject.SetActive(false);
         if (!isBodyDraw && TrainingUI.instance != null) TrainingUI.instance.Clear();
     }
