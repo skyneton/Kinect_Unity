@@ -18,6 +18,8 @@ public class CanvasViewManager : MonoBehaviour
 
     public Material lineMaterial;
 
+    private ulong? TrackingId;
+
     Dictionary<JointType, LineRenderer> boneObjects = new Dictionary<JointType, LineRenderer>();
 
     private RectTransform rect;
@@ -98,10 +100,20 @@ public class CanvasViewManager : MonoBehaviour
 
     private void DrawSkeleton() {
         if (KinectBodyManaager.instance == null || KinectBodyManaager.instance.data == null) return;
+
+        bool isBodyDraw = false;
         foreach(Body body in KinectBodyManaager.instance.data) {
-            if (body == null || !body.IsTracked) continue;
+            if (body == null || !body.IsTracked || TrackingId.HasValue && TrackingId.Value != body.TrackingId) continue;
+            TrackingId = body.TrackingId;
             DrawBody(body);
+            if (TrainingUI.instance != null) TrainingUI.instance.TrainingCheck(body); //자세 확인
+            isBodyDraw = true;
+            break;
         }
+
+        TrackingId = null;
+        if (!isBodyDraw && boneGroupObject.gameObject.activeSelf) boneGroupObject.gameObject.SetActive(false);
+        if (!isBodyDraw && TrainingUI.instance != null) TrainingUI.instance.Clear();
     }
 
     private LineRenderer CreateBodyObject(JointType type) {
@@ -118,6 +130,8 @@ public class CanvasViewManager : MonoBehaviour
     }
 
     private void DrawBody(Body body) {
+        if (!boneGroupObject.gameObject.activeSelf) boneGroupObject.gameObject.SetActive(true);
+
         foreach (Windows.Kinect.Joint joint in body.Joints.Values) {
             Windows.Kinect.Joint? targetJoint = null;
 
@@ -186,6 +200,9 @@ public class CanvasViewManager : MonoBehaviour
             lr.SetPosition(1, targetPos);
             lr.startColor = GetColorForState(joint.TrackingState);
             lr.endColor = GetColorForState(targetJoint.Value.TrackingState);
+            if (joint.TrackingState == TrackingState.Tracked && targetJoint.Value.TrackingState == TrackingState.Tracked)
+                lr.enabled = true;
+            else lr.enabled = false;
         }
         /*
         for(JointType type = JointType.SpineBase; type <= JointType.ThumbRight; type++) {
@@ -252,7 +269,7 @@ public class CanvasViewManager : MonoBehaviour
     private static Color GetColorForState(TrackingState state) {
         switch (state) {
             case TrackingState.Tracked:
-                return Color.green;
+                return new Color(0.3333333f, 1f, 0.76862745f);
 
             case TrackingState.Inferred:
                 return Color.red;
@@ -262,7 +279,7 @@ public class CanvasViewManager : MonoBehaviour
         }
     }
 
-    private bool IsWithinColorFrame(Vector2 pos) {
+    public static bool IsWithinColorFrame(Vector2 pos) {
         return pos.x >= 0 && pos.x <= KinectColorManager.instance.texture.width
             && -pos.y >= 0 && -pos.y <= KinectColorManager.instance.texture.height;
     }
