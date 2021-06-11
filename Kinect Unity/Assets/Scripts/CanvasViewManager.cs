@@ -25,6 +25,8 @@ public class CanvasViewManager : MonoBehaviour
     private RectTransform rect;
     private Canvas canvas;
 
+    private Vector2 lastScreenSize;
+
 
 
     private Dictionary<JointType, JointType> boneMap = new Dictionary<JointType, JointType>()
@@ -63,12 +65,22 @@ public class CanvasViewManager : MonoBehaviour
     private void Start() {
         rect = GetComponent<RectTransform>();
         canvas = GetComponent<Canvas>();
+        lastScreenSize = new Vector2(Screen.width, Screen.height);
     }
 
     void Update() {
         OnChangedTextureScale();
         UpdateKinectImage();
         DrawSkeleton();
+        ScreenChangeCheck();
+    }
+
+    private void ScreenChangeCheck() {
+        if (lastScreenSize.x == Screen.width && lastScreenSize.y == Screen.height) return;
+        lastScreenSize.x = Screen.width;
+        lastScreenSize.y = Screen.height;
+
+        OnChangedTextureScale(true);
     }
 
     private void UpdateKinectImage() {
@@ -76,8 +88,8 @@ public class CanvasViewManager : MonoBehaviour
         image.texture = KinectColorManager.instance.texture;
     }
 
-    private void OnChangedTextureScale() {
-        if (KinectColorManager.instance == null || KinectColorManager.instance.texture == null) return;
+    private void OnChangedTextureScale(bool force = false) {
+        if (!force && (KinectColorManager.instance == null || KinectColorManager.instance.texture == null)) return;
         Texture2D texture = KinectColorManager.instance.texture;
 
         if (beforeSize[0] != texture.width || beforeSize[1] != texture.height) {

@@ -43,7 +43,7 @@ public class TrainingUI : MonoBehaviour
     }
 
     public void UpdateSquartInfo() {
-        textDatas[0].text.text = string.Format("스쿼트 {0}세트", training.set);
+        textDatas[0].text.text = string.Format("스쿼트 {0}세트 ˅", training.set);
         textDatas[1].text.text = string.Format("현재 {0} / 10개", training.num);
     }
 
