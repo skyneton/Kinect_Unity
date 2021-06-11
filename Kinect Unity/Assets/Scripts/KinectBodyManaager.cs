@@ -29,7 +29,7 @@ public class KinectBodyManaager : MonoBehaviour
         BodyFrame frame = bodyReader.AcquireLatestFrame();
         if (frame == null) return;
 
-        if(data == null) data = new Body[sensor.BodyFrameSource.BodyCount];
+        data = new Body[frame.BodyCount];
         frame.GetAndRefreshBodyData(data);
 
         frame.Dispose();

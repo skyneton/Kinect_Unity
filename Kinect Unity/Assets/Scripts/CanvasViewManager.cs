@@ -12,13 +12,16 @@ public class CanvasViewManager : MonoBehaviour
 
     public float scale = 1.64f;
 
-    private CanvasScaler scaler;
-
     public float textureScale { get; private set; }
 
     public static readonly int MIN_WIDTH = 300;
 
+    public Material lineMaterial;
+
     Dictionary<JointType, LineRenderer> boneObjects = new Dictionary<JointType, LineRenderer>();
+
+    private RectTransform rect;
+    private Canvas canvas;
 
 
 
@@ -56,7 +59,8 @@ public class CanvasViewManager : MonoBehaviour
 
 
     private void Start() {
-        scaler = GetComponent<CanvasScaler>();
+        rect = GetComponent<RectTransform>();
+        canvas = GetComponent<Canvas>();
     }
 
     void Update() {
@@ -78,17 +82,10 @@ public class CanvasViewManager : MonoBehaviour
             beforeSize[0] = texture.width;
             beforeSize[1] = texture.height;
 
-            Vector2 vec = scaler.referenceResolution;
-
-            textureScale = 1;
-            if (texture.height / scale < MIN_WIDTH) {
-                textureScale = MIN_WIDTH / (texture.height / scale);
+            textureScale = this.rect.sizeDelta.x / texture.width;
+            if (texture.height * textureScale < this.rect.sizeDelta.y) {
+                textureScale = this.rect.sizeDelta.y / texture.height;
             }
-
-            vec.x = texture.width * textureScale / scale;
-            vec.y = texture.height * textureScale;
-
-            scaler.referenceResolution = vec;
 
             Vector2 rect = image.rectTransform.sizeDelta;
 
@@ -112,14 +109,85 @@ public class CanvasViewManager : MonoBehaviour
         body.transform.parent = boneGroupObject;
         body.name = type.ToString();
         LineRenderer lr = body.AddComponent<LineRenderer>();
-        lr.startWidth = 0.5f;
-        lr.endWidth = 0.5f;
+        lr.startWidth = 0.05f;
+        lr.endWidth = 0.05f;
+        lr.material = lineMaterial;
 
         boneObjects.Add(type, lr);
         return lr;
     }
 
     private void DrawBody(Body body) {
+        foreach (Windows.Kinect.Joint joint in body.Joints.Values) {
+            Windows.Kinect.Joint? targetJoint = null;
+
+            if (boneMap.ContainsKey(joint.JointType)) targetJoint = body.Joints[boneMap[joint.JointType]];
+
+            LineRenderer lr;
+            if (boneObjects.ContainsKey(joint.JointType)) lr = boneObjects[joint.JointType];
+            else lr = CreateBodyObject(joint.JointType);
+
+
+            ColorSpacePoint? point = KinectBodyManaager.instance.GetColoredSpacePoint(joint.Position);
+            if (!point.HasValue) {
+                lr.enabled = false;
+                continue;
+            }
+
+            Vector3 pos = Point2Vector2(point.Value);
+            if (!IsWithinColorFrame(pos)) {
+                lr.enabled = false;
+                continue;
+            }
+            pos.x -= KinectColorManager.instance.texture.width / 2;
+            pos.y += KinectColorManager.instance.texture.height / 2;
+
+            pos *= textureScale;
+
+            pos.x += rect.sizeDelta.x / 2;
+            pos.y += rect.sizeDelta.y / 2;
+            pos.z = canvas.planeDistance;
+
+            pos = Camera.main.ScreenToWorldPoint(pos);
+            pos.z = 0;
+
+            lr.transform.position = pos;
+
+            if (!targetJoint.HasValue) {
+                lr.enabled = false;
+                continue;
+            }
+
+            ColorSpacePoint? targetPoint = KinectBodyManaager.instance.GetColoredSpacePoint(targetJoint.Value.Position);
+            if(!targetPoint.HasValue) {
+                lr.enabled = false;
+                continue;
+            }
+
+            Vector3 targetPos = Point2Vector2(targetPoint.Value);
+            if (!IsWithinColorFrame(targetPos)) {
+                lr.enabled = false;
+                continue;
+            }
+
+            targetPos.x -= KinectColorManager.instance.texture.width / 2;
+            targetPos.y += KinectColorManager.instance.texture.height / 2;
+
+            targetPos *= textureScale;
+
+            targetPos.x += rect.sizeDelta.x / 2;
+            targetPos.y += rect.sizeDelta.y / 2;
+            targetPos.z = canvas.planeDistance;
+
+            targetPos = Camera.main.ScreenToWorldPoint(targetPos);
+            targetPos.z = 0;
+
+            lr.SetPosition(0, pos);
+            lr.SetPosition(1, targetPos);
+            lr.startColor = GetColorForState(joint.TrackingState);
+            lr.endColor = GetColorForState(targetJoint.Value.TrackingState);
+        }
+        /*
         for(JointType type = JointType.SpineBase; type <= JointType.ThumbRight; type++) {
             Windows.Kinect.Joint joint = body.Joints[type];
             Windows.Kinect.Joint? target = null;
@@ -136,17 +204,33 @@ public class CanvasViewManager : MonoBehaviour
             if (lr == null) lr = CreateBodyObject(type);
 
             if (point.HasValue) {
-                Vector2 pos = Camera.main.ScreenToWorldPoint(Point2Vector2(point.Value));
+                Vector2 pos = Point2Vector2(point.Value) * textureScale;
 
-                print(textureScale);
+                if(!IsWithinColorFrame(pos)) {
+                    lr.enabled = false;
+                    return;
+                }
 
-                lr.transform.localPosition = pos;
+                pos.x -= scaler.referenceResolution.x / 2;
+                pos.y -= scaler.referenceResolution.y / 2;
+
+                lr.transform.localPosition = Camera.main.ScreenToWorldPoint(pos);
 
                 if (target.HasValue) {
                     ColorSpacePoint? targetPoint = KinectBodyManaager.instance.GetColoredSpacePoint(target.Value.Position);
                     if (targetPoint.HasValue) {
-                        lr.SetPosition(0, pos);
-                        lr.SetPosition(1, Camera.main.ScreenToWorldPoint(Point2Vector2(targetPoint.Value)));
+                        Vector2 targetPos = Point2Vector2(targetPoint.Value) * textureScale;
+
+                        targetPos.x -= scaler.referenceResolution.x / 2;
+                        targetPos.y -= scaler.referenceResolution.y / 2;
+
+                        if (!IsWithinColorFrame(targetPos)) {
+                            lr.enabled = false;
+                            return;
+                        }
+
+                        lr.SetPosition(0, Camera.main.ScreenToWorldPoint(pos));
+                        lr.SetPosition(1, Camera.main.ScreenToWorldPoint(targetPos));
                         lr.startColor = GetColorForState(joint.TrackingState);
                         lr.endColor = GetColorForState(target.Value.TrackingState);
                     }
@@ -154,6 +238,7 @@ public class CanvasViewManager : MonoBehaviour
                 else lr.enabled = false;
             }
         }
+        */
     }
 
     public static Vector3 Joint2Vector3(Windows.Kinect.Joint joint) {
@@ -161,7 +246,7 @@ public class CanvasViewManager : MonoBehaviour
     }
 
     public static Vector2 Point2Vector2(ColorSpacePoint point) {
-        return new Vector2(point.X, point.Y);
+        return new Vector2(point.X, -point.Y);
     }
 
     private static Color GetColorForState(TrackingState state) {
@@ -175,6 +260,11 @@ public class CanvasViewManager : MonoBehaviour
             default:
                 return Color.black;
         }
+    }
+
+    private bool IsWithinColorFrame(Vector2 pos) {
+        return pos.x >= 0 && pos.x <= KinectColorManager.instance.texture.width
+            && -pos.y >= 0 && -pos.y <= KinectColorManager.instance.texture.height;
     }
 
     /*
