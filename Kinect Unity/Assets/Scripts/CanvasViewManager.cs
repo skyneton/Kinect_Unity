@@ -89,10 +89,10 @@ public class CanvasViewManager : MonoBehaviour
     }
 
     private void OnChangedTextureScale(bool force = false) {
-        if (!force && (KinectColorManager.instance == null || KinectColorManager.instance.texture == null)) return;
+        if (KinectColorManager.instance == null || KinectColorManager.instance.texture == null) return;
         Texture2D texture = KinectColorManager.instance.texture;
 
-        if (beforeSize[0] != texture.width || beforeSize[1] != texture.height) {
+        if (beforeSize[0] != texture.width || beforeSize[1] != texture.height || force) {
             beforeSize[0] = texture.width;
             beforeSize[1] = texture.height;
 
@@ -111,15 +111,18 @@ public class CanvasViewManager : MonoBehaviour
     }
 
     private void DrawSkeleton() {
-        if (KinectBodyManaager.instance == null || KinectBodyManaager.instance.data == null) return;
+        if (KinectManager.instance == null || KinectBodyManager.instance == null || KinectBodyManager.instance.data == null) return;
 
         bool isBodyDraw = false;
-        foreach(Body body in KinectBodyManaager.instance.data) {
+        foreach(Body body in KinectBodyManager.instance.data) {
             if (body == null || !body.IsTracked || TrackingId.HasValue && TrackingId.Value != body.TrackingId) continue;
             TrackingId = body.TrackingId;
-            DrawBody(body);
-            if (TrainingUI.instance != null) TrainingUI.instance.TrainingCheck(body); //자세 확인
-            isBodyDraw = true;
+            Vector2? drawBody = DrawBody(body);
+            if(drawBody.HasValue) {
+                isBodyDraw = true;
+                TrainingUI.instance.TrainingCheck(body); //자세 확인
+                //KinectBodyIndexManager.instance.DrawBodyOutline(drawBody.Value);
+            }
             break;
         }
 
@@ -141,8 +144,10 @@ public class CanvasViewManager : MonoBehaviour
         return lr;
     }
 
-    private void DrawBody(Body body) {
+    private Vector2? DrawBody(Body body) {
         if (!boneGroupObject.gameObject.activeSelf) boneGroupObject.gameObject.SetActive(true);
+
+        Vector2? bodyPos = null;
 
         foreach (Windows.Kinect.Joint joint in body.Joints.Values) {
             Windows.Kinect.Joint? targetJoint = null;
@@ -154,7 +159,7 @@ public class CanvasViewManager : MonoBehaviour
             else lr = CreateBodyObject(joint.JointType);
 
 
-            ColorSpacePoint? point = KinectBodyManaager.instance.GetColoredSpacePoint(joint.Position);
+            ColorSpacePoint? point = KinectManager.instance.GetColoredSpacePoint(joint.Position);
             if (!point.HasValue) {
                 lr.enabled = false;
                 continue;
@@ -165,6 +170,8 @@ public class CanvasViewManager : MonoBehaviour
                 lr.enabled = false;
                 continue;
             }
+            bodyPos = new Vector2(point.Value.X, point.Value.Y);
+
             pos.x -= KinectColorManager.instance.texture.width / 2;
             pos.y += KinectColorManager.instance.texture.height / 2;
 
@@ -184,7 +191,7 @@ public class CanvasViewManager : MonoBehaviour
                 continue;
             }
 
-            ColorSpacePoint? targetPoint = KinectBodyManaager.instance.GetColoredSpacePoint(targetJoint.Value.Position);
+            ColorSpacePoint? targetPoint = KinectManager.instance.GetColoredSpacePoint(targetJoint.Value.Position);
             if(!targetPoint.HasValue) {
                 lr.enabled = false;
                 continue;
@@ -216,58 +223,8 @@ public class CanvasViewManager : MonoBehaviour
                 lr.enabled = true;
             else lr.enabled = false;
         }
-        /*
-        for(JointType type = JointType.SpineBase; type <= JointType.ThumbRight; type++) {
-            Windows.Kinect.Joint joint = body.Joints[type];
-            Windows.Kinect.Joint? target = null;
 
-            if (boneMap.ContainsKey(type)) {
-                target = body.Joints[boneMap[type]];
-            }
-
-            ColorSpacePoint? point = KinectBodyManaager.instance.GetColoredSpacePoint(joint.Position);
-
-
-            LineRenderer lr;
-            boneObjects.TryGetValue(type, out lr);
-            if (lr == null) lr = CreateBodyObject(type);
-
-            if (point.HasValue) {
-                Vector2 pos = Point2Vector2(point.Value) * textureScale;
-
-                if(!IsWithinColorFrame(pos)) {
-                    lr.enabled = false;
-                    return;
-                }
-
-                pos.x -= scaler.referenceResolution.x / 2;
-                pos.y -= scaler.referenceResolution.y / 2;
-
-                lr.transform.localPosition = Camera.main.ScreenToWorldPoint(pos);
-
-                if (target.HasValue) {
-                    ColorSpacePoint? targetPoint = KinectBodyManaager.instance.GetColoredSpacePoint(target.Value.Position);
-                    if (targetPoint.HasValue) {
-                        Vector2 targetPos = Point2Vector2(targetPoint.Value) * textureScale;
-
-                        targetPos.x -= scaler.referenceResolution.x / 2;
-                        targetPos.y -= scaler.referenceResolution.y / 2;
-
-                        if (!IsWithinColorFrame(targetPos)) {
-                            lr.enabled = false;
-                            return;
-                        }
-
-                        lr.SetPosition(0, Camera.main.ScreenToWorldPoint(pos));
-                        lr.SetPosition(1, Camera.main.ScreenToWorldPoint(targetPos));
-                        lr.startColor = GetColorForState(joint.TrackingState);
-                        lr.endColor = GetColorForState(target.Value.TrackingState);
-                    }
-                }
-                else lr.enabled = false;
-            }
-        }
-        */
+        return bodyPos;
     }
 
     public static Vector3 Joint2Vector3(Windows.Kinect.Joint joint) {

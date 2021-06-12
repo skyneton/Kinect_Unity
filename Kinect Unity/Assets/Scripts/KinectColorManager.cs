@@ -4,11 +4,11 @@ using Windows.Kinect;
 public class KinectColorManager : MonoBehaviour
 {
     public static KinectColorManager instance { get; private set; }
-    private KinectSensor sensor;
     private ColorFrameReader colorReader;
-    private byte[] data;
+    public byte[] data;
 
     public Texture2D texture { get; private set; }
+    public int perPixel { get; private set; } = 0;
 
     private void Awake() {
         instance = this;
@@ -16,7 +16,6 @@ public class KinectColorManager : MonoBehaviour
 
     void Start() {
         KinectSensorLoad();
-        sensor = KinectSensor.GetDefault();
     }
 
     // Update is called once per frame
@@ -39,22 +38,23 @@ public class KinectColorManager : MonoBehaviour
         frame.Dispose();
     }
 
-    public void KinectSensorLoad() {
-        if (sensor != null && colorReader != null) return;
-        if (sensor == null) sensor = KinectSensor.GetDefault();
-        if (sensor == null) return;
-        if (colorReader == null) colorReader = sensor.ColorFrameSource.OpenReader();
+    private void KinectSensorLoad() {
+        if (KinectManager.instance == null || KinectManager.instance.sensor == null || colorReader != null) return;
+        if (colorReader == null) colorReader = KinectManager.instance.sensor.ColorFrameSource.OpenReader();
         if (colorReader == null) return;
 
-        FrameDescription description = sensor.ColorFrameSource.CreateFrameDescription(ColorImageFormat.Rgba);
+        FrameDescription description = KinectManager.instance.sensor.ColorFrameSource.CreateFrameDescription(ColorImageFormat.Rgba);
         texture = new Texture2D(description.Width, description.Height, TextureFormat.RGBA32, false);
+        perPixel = (int)description.BytesPerPixel;
         data = new byte[description.BytesPerPixel * description.LengthInPixels];
+    }
 
-        if (!sensor.IsOpen) sensor.Open();
+    public void UpdateTexture() {
+        texture.LoadRawTextureData(data);
+        texture.Apply();
     }
 
     private void OnApplicationQuit() {
         if (colorReader != null) colorReader.Dispose();
-        if (sensor != null && sensor.IsOpen) sensor.Close();
     }
 }

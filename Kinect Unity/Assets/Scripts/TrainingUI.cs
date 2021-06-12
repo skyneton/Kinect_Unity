@@ -12,6 +12,8 @@ public class TrainingUI : MonoBehaviour
 
     public static TrainingUI instance;
 
+    public DegreeData degreeData = new DegreeData();
+
     private void Awake() {
         instance = this;
     }
@@ -79,9 +81,9 @@ public class TrainingUI : MonoBehaviour
             float y = Distance(ankleAvg.y, kneeAvg.y);
 
             float degree = Mathf.Atan2(y, distance) * Mathf.Rad2Deg;
-            str += string.Format("발목-무릎={0:00.00} (84 ~ 90)", degree);
+            str += string.Format("발목-무릎={0:00.00} ({1} ~ {2})", degree, degreeData.MIN_ANKLE, degreeData.MAX_ANKLE);
 
-            if ((degree < 84f || degree > 90f || ankleAvg.y >= kneeAvg.y) && !isWarning) {
+            if ((degree < degreeData.MIN_ANKLE || degree > degreeData.MAX_ANKLE || ankleAvg.y >= kneeAvg.y) && !isWarning) {
                 SetSquartMode(false);
                 TextWarningMessage("자세가 잘못되었습니다.\n발목 - 무릎");
                 training.beforeSquarting = false;
@@ -94,10 +96,13 @@ public class TrainingUI : MonoBehaviour
             float distance = Vector2.Distance(Vector3ToXZ(kneeAvg), Vector3ToXZ(hipAvg));
             float y = Distance(kneeAvg.y, hipAvg.y);
 
-            float degree = Mathf.Atan2(y, distance) * Mathf.Rad2Deg;
-            str += string.Format("\n무릎-골반={0:00.00} (55 ~ 80)", degree);
+            float y1 = CanvasViewManager.Joint2Vector3(Joints[JointType.KneeLeft]).y * 100;
+            float y2 = CanvasViewManager.Joint2Vector3(Joints[JointType.KneeRight]).y * 100;
 
-            if ((kneeAvg.y >= hipAvg.y || degree < 55f || degree > 80f) && !isWarning) {
+            float degree = Mathf.Atan2(y, distance) * Mathf.Rad2Deg;
+            str += string.Format("\n무릎-골반={0:00.00} ({1} ~ {2})", degree, degreeData.MIN_KNEE, degreeData.MAX_KNEE);
+
+            if ((kneeAvg.y >= hipAvg.y || degree < degreeData.MIN_KNEE || degree > degreeData.MAX_KNEE || Mathf.Abs(y1 - y2) > 4) && !isWarning) {
                 SetSquartMode(false);
                 TextWarningMessage("자세가 잘못되었습니다.\n무릎 - 골반");
                 training.beforeSquarting = false;
@@ -111,9 +116,9 @@ public class TrainingUI : MonoBehaviour
             float y = Distance(hipAvg.y, shoulder.y);
 
             float degree = Mathf.Atan2(y, distance) * Mathf.Rad2Deg;
-            str += string.Format("\n골반-어깨={0:00.00} (70 ~ 90)", degree);
+            str += string.Format("\n골반-어깨={0:00.00} ({1} ~ {2})", degree, degreeData.MIN_HIP, degreeData.MAX_HIP);
 
-            if ((degree < 70f || degree > 90f) && !isWarning) {
+            if ((degree < degreeData.MIN_HIP || degree > degreeData.MAX_HIP) && !isWarning) {
                 SetSquartMode(false);
                 TextWarningMessage("자세가 잘못되었습니다.\n골반 - 어깨");
                 training.beforeSquarting = false;
@@ -127,9 +132,9 @@ public class TrainingUI : MonoBehaviour
             float y = Distance(shoulder.y, nect.y);
 
             float degree = Mathf.Atan2(y, distance) * Mathf.Rad2Deg;
-            str += string.Format("\n어깨-목={0:00.00} (0 ~ 10)", degree);
+            str += string.Format("\n어깨-목={0:00.00} ({1} ~ {2})", degree, degreeData.MIN_SHOULDER, degreeData.MAX_SHOULDER);
 
-            if ((degree < 0f || degree > 10f) && !isWarning) {
+            if ((degree < degreeData.MIN_SHOULDER || degree > degreeData.MAX_SHOULDER) && !isWarning) {
                 SetSquartMode(false);
                 TextWarningMessage("자세가 잘못되었습니다.\n어깨 - 목");
                 training.beforeSquarting = false;
@@ -173,7 +178,7 @@ public class TrainingUI : MonoBehaviour
     }
 
     public static bool WithInColorFrameSingle(CameraSpacePoint p) {
-        ColorSpacePoint? point = KinectBodyManaager.instance.GetColoredSpacePoint(p);
+        ColorSpacePoint? point = KinectManager.instance.GetColoredSpacePoint(p);
         if (!point.HasValue) return false;
         if (!CanvasViewManager.IsWithinColorFrame(CanvasViewManager.Point2Vector2(point.Value))) return false;
 
@@ -256,5 +261,19 @@ public class TrainingUI : MonoBehaviour
         public bool isSquarting = false;
         public bool beforeSquarting = false;
         public float squartTime = 5f;
+    }
+
+    public class DegreeData {
+        public float MIN_ANKLE = 84;
+        public float MAX_ANKLE = 90;
+
+        public float MIN_KNEE = 60;
+        public float MAX_KNEE = 84;
+
+        public float MIN_HIP = 75;
+        public float MAX_HIP = 90;
+
+        public float MIN_SHOULDER = 0;
+        public float MAX_SHOULDER = 10;
     }
 }
