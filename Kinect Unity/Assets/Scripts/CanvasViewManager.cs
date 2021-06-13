@@ -116,6 +116,70 @@ public class CanvasViewManager : MonoBehaviour
             Vector2 anchored = TrainingUI.instance.rect.anchoredPosition;
             anchored.x = -train.x / 2;
             TrainingUI.instance.rect.anchoredPosition = anchored;
+
+            TrainingUI.TextData[] textDatas = TrainingUI.instance.textDatas;
+
+            float height = this.rect.sizeDelta.y + TrainingUI.instance.rect.sizeDelta.y;
+
+            //스쿼트 TITLE 크기
+            RectTransform textRect = textDatas[0].text.rectTransform;
+            Vector2 size = textRect.sizeDelta;
+            size.y = height * 0.1f;
+            textRect.sizeDelta = size;
+
+            Vector2 pos = textRect.anchoredPosition;
+            pos.y = -size.y / 2 - 10;
+            textRect.anchoredPosition = pos;
+
+            float tempHeight = size.y;
+
+            //현재 갯수 텍스트
+            textRect = textDatas[1].text.rectTransform;
+            size = textRect.sizeDelta;
+            size.y = height * 0.06f;
+            textRect.sizeDelta = size;
+
+            pos = textRect.anchoredPosition;
+            pos.y = -tempHeight + -size.y / 2 - 10;
+            textRect.anchoredPosition = pos;
+
+            //상태 택스트
+            textRect = textDatas[2].text.rectTransform;
+            size = textRect.sizeDelta;
+            size.y = height * 0.08f;
+            textRect.sizeDelta = size;
+
+            tempHeight = size.y;
+
+            //완벽한 자세 텍스트
+            textRect = textDatas[3].text.rectTransform;
+            size = textRect.sizeDelta;
+            size.y = height * 0.06f;
+            textRect.sizeDelta = size;
+
+            pos = textRect.anchoredPosition;
+            pos.y = -tempHeight + -size.y / 2;
+            textRect.anchoredPosition = pos;
+
+            //Now Input Data 텍스트
+            textRect = textDatas[4].text.rectTransform;
+            size = textRect.sizeDelta;
+            size.y = height * 0.05f;
+            textRect.sizeDelta = size;
+
+            pos = textRect.anchoredPosition;
+            pos.y = height * 0.15f + 40;
+            textRect.anchoredPosition = pos;
+
+            //Status 텍스트
+            textRect = textDatas[5].text.rectTransform;
+            size = textRect.sizeDelta;
+            size.y = height * 0.15f;
+            textRect.sizeDelta = size;
+
+            pos = textRect.anchoredPosition;
+            pos.y = size.y / 2 + 25;
+            textRect.anchoredPosition = pos;
         }
     }
 

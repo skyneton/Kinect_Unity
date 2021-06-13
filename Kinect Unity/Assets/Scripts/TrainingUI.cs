@@ -53,18 +53,20 @@ public class TrainingUI : MonoBehaviour
 
     public void TrainingCheck(Body body) {
         //자세 확인
+        Dictionary<JointType, JointOrientation> JointOrientations = body.JointOrientations;
         Dictionary<JointType, Kinect.Joint> Joints = body.Joints;
+
         Vector3 ankleAvg = GetAverageVector(Joints[JointType.AnkleLeft], Joints[JointType.AnkleRight]);
         Vector3 kneeAvg = GetAverageVector(Joints[JointType.KneeRight], Joints[JointType.KneeLeft]);
         Vector3 hipAvg = GetAverageVector(Joints[JointType.HipLeft], Joints[JointType.HipRight]);
         Vector3 shoulder = GetAverageVector(Joints[JointType.ShoulderLeft], Joints[JointType.ShoulderRight]);
-        Vector3 nect = CanvasViewManager.Joint2Vector3(Joints[JointType.Neck]) * 100;
+        Vector3 neck = CanvasViewManager.Joint2Vector3(Joints[JointType.Neck]) * 1000;
 
         bool isAnkleCheck = WithInColorFrame(Joints[JointType.AnkleLeft].Position, Joints[JointType.AnkleRight].Position);
         bool isKneeCheck = WithInColorFrame(Joints[JointType.KneeLeft].Position, Joints[JointType.KneeRight].Position);
         bool isHipCheck = WithInColorFrameSingle(Joints[JointType.SpineBase].Position);
         bool isShoulderCheck = WithInColorFrameSingle(Joints[JointType.SpineShoulder].Position);
-        bool isNectCheck = WithInColorFrameSingle(Joints[JointType.Head].Position);
+        bool isNeckCheck = WithInColorFrameSingle(Joints[JointType.Neck].Position);
 
         bool isWarning = false;
 
@@ -79,13 +81,10 @@ public class TrainingUI : MonoBehaviour
 
         if(isAnkleCheck) {
             //발목 -> 무릎 체크
-            float distance = Vector2.Distance(Vector3ToXZ(ankleAvg), Vector3ToXZ(kneeAvg));
-            float y = Distance(ankleAvg.y, kneeAvg.y);
+            float angle = Angle(ankleAvg, kneeAvg);
+            str += string.Format("발목-무릎={0:00.00} ({1} ~ {2})", angle, degreeData.MIN_ANKLE, degreeData.MAX_ANKLE);
 
-            float degree = Mathf.Atan2(y, distance) * Mathf.Rad2Deg;
-            str += string.Format("발목-무릎={0:00.00} ({1} ~ {2})", degree, degreeData.MIN_ANKLE, degreeData.MAX_ANKLE);
-
-            if ((degree < degreeData.MIN_ANKLE || degree > degreeData.MAX_ANKLE || ankleAvg.y >= kneeAvg.y) && !isWarning) {
+            if ((angle < degreeData.MIN_ANKLE || angle > degreeData.MAX_ANKLE || ankleAvg.y >= kneeAvg.y) && !isWarning) {
                 SetSquartMode(false);
                 TextWarningMessage("자세가 잘못되었습니다.\n발목 - 무릎");
                 training.beforeSquarting = false;
@@ -95,16 +94,11 @@ public class TrainingUI : MonoBehaviour
 
         {
             //무릎 -> 골반 체크
-            float distance = Vector2.Distance(Vector3ToXZ(kneeAvg), Vector3ToXZ(hipAvg));
-            float y = Distance(kneeAvg.y, hipAvg.y);
+            float angle = Angle(kneeAvg, hipAvg);
 
-            float y1 = CanvasViewManager.Joint2Vector3(Joints[JointType.KneeLeft]).y * 100;
-            float y2 = CanvasViewManager.Joint2Vector3(Joints[JointType.KneeRight]).y * 100;
+            str += string.Format("\n무릎-골반={0:00.00} ({1} ~ {2})", angle, degreeData.MIN_KNEE, degreeData.MAX_KNEE);
 
-            float degree = Mathf.Atan2(y, distance) * Mathf.Rad2Deg;
-            str += string.Format("\n무릎-골반={0:00.00} ({1} ~ {2})", degree, degreeData.MIN_KNEE, degreeData.MAX_KNEE);
-
-            if ((kneeAvg.y >= hipAvg.y || degree < degreeData.MIN_KNEE || degree > degreeData.MAX_KNEE || Mathf.Abs(y1 - y2) > 4) && !isWarning) {
+            if ((kneeAvg.y >= hipAvg.y || angle < degreeData.MIN_KNEE || angle > degreeData.MAX_KNEE) && !isWarning) {
                 SetSquartMode(false);
                 TextWarningMessage("자세가 잘못되었습니다.\n무릎 - 골반");
                 training.beforeSquarting = false;
@@ -114,13 +108,10 @@ public class TrainingUI : MonoBehaviour
 
         {
             //골반 -> 어깨 체크
-            float distance = Vector2.Distance(Vector3ToXZ(hipAvg), Vector3ToXZ(shoulder));
-            float y = Distance(hipAvg.y, shoulder.y);
+            float angle = Angle(hipAvg, shoulder);
+            str += string.Format("\n골반-어깨={0:00.00} ({1} ~ {2})", angle, degreeData.MIN_HIP, degreeData.MAX_HIP);
 
-            float degree = Mathf.Atan2(y, distance) * Mathf.Rad2Deg;
-            str += string.Format("\n골반-어깨={0:00.00} ({1} ~ {2})", degree, degreeData.MIN_HIP, degreeData.MAX_HIP);
-
-            if ((degree < degreeData.MIN_HIP || degree > degreeData.MAX_HIP) && !isWarning) {
+            if ((angle < degreeData.MIN_HIP || angle > degreeData.MAX_HIP) && !isWarning) {
                 SetSquartMode(false);
                 TextWarningMessage("자세가 잘못되었습니다.\n골반 - 어깨");
                 training.beforeSquarting = false;
@@ -128,15 +119,12 @@ public class TrainingUI : MonoBehaviour
             }
         }
 
-        if(isNectCheck) {
+        if(isNeckCheck) {
             //어깨 -> 목 체크
-            float distance = Vector2.Distance(Vector3ToXZ(shoulder), Vector3ToXZ(nect));
-            float y = Distance(shoulder.y, nect.y);
+            float angle = Angle(shoulder, neck);
+            str += string.Format("\n어깨-목={0:00.00} ({1} ~ {2})", angle, degreeData.MIN_SHOULDER, degreeData.MAX_SHOULDER);
 
-            float degree = Mathf.Atan2(y, distance) * Mathf.Rad2Deg;
-            str += string.Format("\n어깨-목={0:00.00} ({1} ~ {2})", degree, degreeData.MIN_SHOULDER, degreeData.MAX_SHOULDER);
-
-            if ((degree < degreeData.MIN_SHOULDER || degree > degreeData.MAX_SHOULDER) && !isWarning) {
+            if ((angle < degreeData.MIN_SHOULDER || angle > degreeData.MAX_SHOULDER) && !isWarning) {
                 SetSquartMode(false);
                 TextWarningMessage("자세가 잘못되었습니다.\n어깨 - 목");
                 training.beforeSquarting = false;
@@ -150,18 +138,40 @@ public class TrainingUI : MonoBehaviour
         if(!isWarning) SetSquartMode(true);
     }
 
+    public static float Angle(Vector3 p1, Vector3 p2) {
+        float distance = Vector2.Distance(Vector3ToXZ(p1), Vector3ToXZ(p2));
+        return Mathf.Atan2(p2.y - p1.y, distance) * Mathf.Rad2Deg;
+    }
+
     public Vector2 GetAverageVector(Kinect.Joint j1, Kinect.Joint j2) {
         if (j1.TrackingState == TrackingState.Tracked && j2.TrackingState == TrackingState.Tracked)
             return JointAverage(j1.Position, j2.Position);
 
         else if (j1.TrackingState == TrackingState.Tracked)
-            return CanvasViewManager.Joint2Vector3(j1) * 100;
+            return CanvasViewManager.Joint2Vector3(j1) * 1000;
 
-        return CanvasViewManager.Joint2Vector3(j2) * 100;
+        return CanvasViewManager.Joint2Vector3(j2) * 1000;
+    }
+
+    public static float Pitch(Kinect.Vector4 q) {
+        float v1 = 2 * (q.W * q.X + q.Y * q.Z);
+        float v2 = 1 - 2 * (q.X * q.X + q.Y * q.Y);
+
+        return Mathf.Atan2(v1, v2) * Mathf.Rad2Deg;
+    }
+
+    public static float Yaw(Kinect.Vector4 q) {
+        float v = Mathf.Clamp(2 * (q.W * q.Y - q.Z * q.X), -1, 1);
+        return Mathf.Asin(v) * Mathf.Rad2Deg;
+    }
+
+    public static JointOrientation TrackedOrientation(Body body, JointOrientation j1, JointOrientation j2) {
+        if (body.Joints[j2.JointType].TrackingState == TrackingState.Tracked) return j2;
+        return j1;
     }
 
     public static Vector3 JointAverage(CameraSpacePoint p1, CameraSpacePoint p2) {
-        return new Vector3((p1.X + p2.X) / 2, (p1.Y + p2.Y) / 2, (p1.Z + p2.Z) / 2) * 100;
+        return new Vector3((p1.X + p2.X) / 2, (p1.Y + p2.Y) / 2, (p1.Z + p2.Z) / 2) * 1000;
     }
 
     public static Vector2 Vector3ToXZ(Vector3 pos) {
@@ -269,10 +279,10 @@ public class TrainingUI : MonoBehaviour
         public float MIN_ANKLE = 84;
         public float MAX_ANKLE = 90;
 
-        public float MIN_KNEE = 60;
-        public float MAX_KNEE = 84;
+        public float MIN_KNEE = 45;
+        public float MAX_KNEE = 86.8f;
 
-        public float MIN_HIP = 75;
+        public float MIN_HIP = 58;
         public float MAX_HIP = 90;
 
         public float MIN_SHOULDER = 0;
