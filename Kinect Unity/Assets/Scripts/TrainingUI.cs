@@ -14,6 +14,8 @@ public class TrainingUI : MonoBehaviour
 
     public DegreeData degreeData = new DegreeData();
 
+    public RectTransform rect;
+
     private void Awake() {
         instance = this;
     }

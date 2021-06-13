@@ -107,6 +107,15 @@ public class CanvasViewManager : MonoBehaviour
             rect.y = texture.height * textureScale;
 
             image.rectTransform.sizeDelta = rect;
+
+            Vector2 train = TrainingUI.instance.rect.sizeDelta;
+            train.x = rect.x * 0.3f;
+            if (train.x < 300) train.x = 300;
+            TrainingUI.instance.rect.sizeDelta = train;
+
+            Vector2 anchored = TrainingUI.instance.rect.anchoredPosition;
+            anchored.x = -train.x / 2;
+            TrainingUI.instance.rect.anchoredPosition = anchored;
         }
     }
 

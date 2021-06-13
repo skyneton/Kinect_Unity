@@ -5,7 +5,7 @@ public class KinectColorManager : MonoBehaviour
 {
     public static KinectColorManager instance { get; private set; }
     private ColorFrameReader colorReader;
-    public byte[] data;
+    public byte[] data { get; private set; }
 
     public Texture2D texture { get; private set; }
     public int perPixel { get; private set; } = 0;
